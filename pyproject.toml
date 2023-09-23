@@ -6,7 +6,10 @@ authors = ["Go-Tsuruoka <go.tsuru.714@akane.waseda.jp>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "<3.13,>=3.9"
+pillow = "^10.0.1"
+matplotlib = "^3.8.0"
+numpy = "^1.26.0"
 
 
 [build-system]
