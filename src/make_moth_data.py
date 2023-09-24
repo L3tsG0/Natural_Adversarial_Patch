@@ -1,39 +1,31 @@
-import pathlib
-import sys
-from PIL import Image
+import os
+from pathlib import Path
+from tqdm import tqdm
 
 
-def get_pixels(img):
-    pixels = list(img.getdata())
-    return pixels
+from module.extract_by_mask import (
+    extract_by_mask,
+    get_path_list,
+)
 
 
 def main():
-    img_dir = pathlib.Path("data/images")
-    mask_data_dir = pathlib.Path("data/segmentations")
-    img_path_list = list(img_dir.iterdir())
-    mask_path_list = list(mask_data_dir.iterdir())
+    img_dir = Path("data/images")
+    mask_data_dir = Path("data/segmentations")
 
-    first_img_path = img_path_list[0]
-    # first_img_path = (
-    #     "/Users/shuhe/Natural_Adversarial_Patch/data/images/0010001.png"
-    # )
+    img_path_list = get_path_list(img_dir)
+    mask_path_list = get_path_list(mask_data_dir)
 
-    first_img_mask_path = mask_path_list[0]
+    if os.path.exists("data/cropped") is False:
+        print("data/cropped が存在しないので作成します")
+        os.mkdir("data/cropped")
 
-    first_img = Image.open(first_img_path).convert("RGBA")
-    first_img_mask = Image.open(first_img_mask_path).convert("L")
-
-    first_img_resized = first_img.resize((256, 256))
-    print(first_img_path)
-    first_img_resized.show()
-
-    sys.exit()
-
-    new_data = []
-    for i, item in enumerate(first_img):
-        alpha = 255 if first_img_mask[i] == 2 else 0  # 2なら不透明、0なら透明
-        new_data.append((item[0], item[1], item[2], alpha))
+    for img_path, mask_path in zip(
+        tqdm(sorted(img_path_list), desc="データセット作成しています"),
+        sorted(mask_path_list),
+    ):
+        cropped = extract_by_mask(img_path, mask_path)
+        cropped.save("data/cropped/" + img_path.name)
 
 
 if __name__ == "__main__":
