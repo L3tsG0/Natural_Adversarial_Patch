@@ -5,7 +5,7 @@
 poetryをインストールして([参考url](https://qiita.com/ksato9700/items/b893cf1db83605898d8a))、
 ```poetry install```を実行するとライブラリがインストールされます。
 
-最初の方がコミットのたびにライブラリが増える可能性があるので、pullするたびに
+最初の方はコミットのたびにライブラリが増える可能性があるので、pullするたびに
 ```poetry install```をして、ライブラリをインストールしないといけないかも。
 
 [Kaggle](https://www.kaggle.com/datasets/veeralakrishna/butterfly-dataset)からデータセットをダウンロードして、```data```ディレクトリの下に```image```と```segmentations```を配置してください。
