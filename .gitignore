@@ -1,1 +1,4 @@
-data/
+draft/
+data/leedsbutterfly
+data/moth_dataset.zip
+data/*.png

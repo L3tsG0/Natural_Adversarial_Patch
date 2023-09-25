@@ -10,7 +10,13 @@ python = "<3.13,>=3.9"
 pillow = "^10.0.1"
 matplotlib = "^3.8.0"
 numpy = "^1.26.0"
+opencv-python = "^4.8.0.76"
+torch = ">=2.0.0, !=2.0.1"
 
+
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.25.2"
 
 [build-system]
 requires = ["poetry-core"]
