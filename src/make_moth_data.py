@@ -7,41 +7,37 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 
-from module.extract_by_mask import (
-    extract_by_mask,
-)
-
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 
 def main():
-    base_dir = Path("data/leedsbutterfly")
+    base_dir = Path("../data/leedsbutterfly")
     images_path = base_dir / "images"
     masks_path = base_dir / "segmentations"
 
     # それぞれのディレクトリ内のファイル名のリストを取得
     # 拡張子以外: 拡張子を含めたファイル名の辞書形式で保存
     # 例: {"image1": "image1.png"}
-    images_files = {
+    images_files: dict[str, Path] = {
         f.stem: f
         for f in images_path.iterdir()
         if f.is_file() and f.suffix.lower() == ".png"
     }
-    masks_files = {
+    masks_files: dict[str, Path] = {
         f.stem.replace("_seg0", ""): f
         for f in masks_path.iterdir()
         if f.is_file()
     }
 
     # もしディレクトリが存在しなかったら作る
-    cropped_dir = base_dir / "cropped"
-    if os.path.exists(cropped_dir) is False:
+    cropped_dir: Path = base_dir / "cropped"
+    if cropped_dir.exists is False:
         print(f"{cropped_dir} が存在しないので作成します")
         os.mkdir(cropped_dir)
 
     # 両リストの共通のファイル名を基にペアを作成
-    paired_files = [
+    paired_files: list[tuple[Path, Path]] = [
         (images_files[name], masks_files[name])
         for name in images_files
         if name in masks_files
@@ -51,13 +47,12 @@ def main():
 
         # 画像を読み込む
         mask_img = Image.open(mask_img_path_).convert("L")
-        img_np = np.array(mask_img)
+        img_np= np.array(mask_img)
 
         img = Image.open(img_path_).convert("RGB")
 
         cropped_img = Image.composite(img, Image.new("RGBA", img.size, (255, 255, 255, 0)),mask_img)
         
-        # cropped_img.save(save_filename)
 
         # モルフォロジー変換を適用してノイズを除去
         kernel = np.ones((5, 5), np.uint8)
