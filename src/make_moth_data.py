@@ -2,36 +2,84 @@ import os
 from pathlib import Path
 from tqdm import tqdm
 from PIL import Image
+import cv2
 import sys
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
+import matplotlib.pyplot as plt
+import numpy as np
 
 from module.extract_by_mask import (
     extract_by_mask,
-    get_path_list,
 )
 
 
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+
+
 def main():
-    img_dir = Path("data/images")
-    mask_data_dir = Path("data/segmentations")
+    base_dir = Path("data/leedsbutterfly")
+    images_path = base_dir / "images"
+    masks_path = base_dir / "segmentations"
 
-    img_path_list = get_path_list(img_dir)
-    mask_path_list = get_path_list(mask_data_dir)
+    # それぞれのディレクトリ内のファイル名のリストを取得
+    # 拡張子以外: 拡張子を含めたファイル名の辞書形式で保存
+    # 例: {"image1": "image1.png"}
+    images_files = {
+        f.stem: f
+        for f in images_path.iterdir()
+        if f.is_file() and f.suffix.lower() == ".png"
+    }
+    masks_files = {
+        f.stem.replace("_seg0", ""): f
+        for f in masks_path.iterdir()
+        if f.is_file()
+    }
 
-    if os.path.exists("data/cropped") is False:
-        print("data/cropped が存在しないので作成します")
-        os.mkdir("data/cropped")
+    # もしディレクトリが存在しなかったら作る
+    cropped_dir = base_dir / "cropped"
+    if os.path.exists(cropped_dir) is False:
+        print(f"{cropped_dir} が存在しないので作成します")
+        os.mkdir(cropped_dir)
 
-    for img_path, mask_path in zip(
-        tqdm(sorted(img_path_list), desc="データセット作成しています"),
-        sorted(mask_path_list),
-    ):
-        if Path(img_path).suffix.lower() == '.png':
-            if Path(mask_path).suffix.lower() == '.png':                
-                cropped = extract_by_mask(img_path, mask_path)
-                cropped.save("data/cropped/" + img_path.name)
+    # 両リストの共通のファイル名を基にペアを作成
+    paired_files = [
+        (images_files[name], masks_files[name])
+        for name in images_files
+        if name in masks_files
+    ]
+
+    for img_path_, mask_img_path_ in tqdm(paired_files, desc="データセット作成しています"):
+
+        # 画像を読み込む
+        mask_img = Image.open(mask_img_path_).convert("L")
+        img_np = np.array(mask_img)
+
+        img = Image.open(img_path_).convert("RGB")
+
+        cropped_img = Image.composite(img, Image.new("RGBA", img.size, (255, 255, 255, 0)),mask_img)
+        
+        # cropped_img.save(save_filename)
+
+        # モルフォロジー変換を適用してノイズを除去
+        kernel = np.ones((5, 5), np.uint8)
+        cleaned = cv2.morphologyEx(img_np, cv2.MORPH_OPEN, kernel)
+
+        # 最大の連結成分を検出
+        num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
+            cleaned, connectivity=8)
+        largest_label = np.argmax(stats[1:, 4]) + 1  # 0は背景のため除外
+        binary_cleaned = np.where(labels == largest_label, 255, 0).astype(
+            "uint8"
+        )
+
+        # 切り取る領域の座標を決定
+        non_zero_coords = np.column_stack(np.where(binary_cleaned > 0))
+        min_y, min_x = non_zero_coords.min(axis=0) - 10
+        max_y, max_x = non_zero_coords.max(axis=0) + 10
+
+        # 画像を切り取る
+        cropped_img = cropped_img.crop((min_x, min_y, max_x, max_y))
+        
+        cropped_img.save(Path(cropped_dir) / img_path_.name)
 
 
 if __name__ == "__main__":
