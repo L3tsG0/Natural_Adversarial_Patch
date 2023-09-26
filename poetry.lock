@@ -1877,6 +1877,7 @@ torch = "*"
 tests = ["autopep8", "flake8", "isort", "numpy", "pytest", "scipy (>=1.7.1)"]
 tutorials = ["matplotlib", "pandas", "tabulate"]
 
+
 [[package]]
 name = "typing-extensions"
 version = "4.8.0"
@@ -1949,3 +1950,5 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 lock-version = "2.0"
 python-versions = "<3.13,>=3.9"
 content-hash = "091b88a008be8a5843bdcb7854fd5db129ca8d8289fc030c97173bedfeb441d1"
+
+
