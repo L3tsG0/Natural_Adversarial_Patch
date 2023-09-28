@@ -1,14 +1,15 @@
 from UI.AEengine_interface import AEengine_interface
 from UI.ui import UI
 import time
+import threading
 
 def loop(interface: AEengine_interface):
     prevtime = time.time()   
     while True:
         curtime = time.time()
-        if curtime - prevtime > 10:
-            interface.end_1epoch("pudding.jpg", 59.6, 60)
-        prevtime = curtime
+        if curtime - prevtime > 5:
+            interface.end_1epoch("image.png", 59.6, 60)
+            return
 
 
 class AEEngine(AEengine_interface):
@@ -30,4 +31,6 @@ if __name__ == "__main__":
     interface : AEengine_interface = AEEngine()
     ui: UI = UI(interface)
     interface.set_end_1epoch(ui.end_1epoch)
+    thread1 = threading.Thread(target=loop, args=[interface])
+    thread1.start()
     ui.show()

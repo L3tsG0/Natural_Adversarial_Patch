@@ -46,8 +46,8 @@ class UI:
     # 学習が1エポック回ったタイミングでプレビューする画像を差し替える。インターフェース側から呼ばれる
     def end_1epoch(self, patch_filename: str, attack_success_rate: float, convergence: float):
         self.canvas.delete("all") # いる？
-        img = tk.PhotoImage(file=patch_filename, height=self.canvas_height, width=self.canvas_width)
-        self.canvas.create_image(self.canvas_width/2, self.canvas_height/2, image=img)
+        self.img = tk.PhotoImage(file=patch_filename, height=self.canvas_height, width=self.canvas_width)
+        self.canvas.create_image(self.canvas_width/2, self.canvas_height/2, image=self.img)
         
         self.attack_success_rate.set(f'攻撃成功率: {attack_success_rate}%')
         self.convergence.set(convergence)
@@ -76,8 +76,8 @@ class UI:
         self.root.title("demo_Tkinter")
         self.root.geometry(f"{WIDTH}x{HEIGHT}")
 
-        frame = ttk.Frame(self.root)
-        frame.pack(fill=tk.BOTH, padx=20, pady=10)
+        #frame = ttk.Frame(self.root)
+        #frame.pack(fill=tk.BOTH, padx=20, pady=10)
 
 
         self.text = tk.StringVar()
@@ -116,8 +116,8 @@ class UI:
         self.canvas_height=HEIGHT*2//3
         self.canvas = tk.Canvas(self.root, bg="white", height=self.canvas_height, width=self.canvas_width)
         self.canvas.place(x=WIDTH/100, y=HEIGHT/8)
-        img = tk.PhotoImage(file="image.png", height=self.canvas_height, width=self.canvas_width)
-        self.canvas.create_image(self.canvas_width/2, self.canvas_height/2, image=img)
+        self.img = tk.PhotoImage(file="image2.png", height=self.canvas_height, width=self.canvas_width)
+        self.canvas.create_image(self.canvas_width//2, self.canvas_height//2, image=self.img)
 
         button1=tk.Button(self.root,text="パッチのエクスポート",width=WIDTH//40,height=HEIGHT//500)
         button1.place(x=WIDTH/20,y=HEIGHT-(HEIGHT/12))
