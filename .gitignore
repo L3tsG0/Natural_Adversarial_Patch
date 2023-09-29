@@ -4,3 +4,4 @@ data/moth_dataset.zip
 data/*.png
 __pycache__/
 data/moth_data_orig
+data/data
