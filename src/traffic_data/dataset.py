@@ -1,7 +1,10 @@
+import random
+import csv
 from pathlib import Path
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from PIL import Image
+import matplotlib.pyplot as plt
 
 
 class CustomDataset(Dataset):
@@ -21,6 +24,7 @@ class CustomDataset(Dataset):
         self.unknown_class = []
         self.img_path_list = []
         self.num_classes = 58 - len(self.unknown_class)
+        self.int2label = self.get_int2label()
 
         # 訓練の場合は data_dir/クラス名/ファイル名.png の形式で画像が保存されている
         # unknown_class は除外して、画像のパスを取得する
@@ -33,7 +37,6 @@ class CustomDataset(Dataset):
                         p for p in child.iterdir() if p.suffix == ".png"
                     ]
                     self.img_path_list.extend(temp_path_list)
-            self.img_path_list.sort()
         # テストの場合は data_dir/ファイル名.png の形式で画像が保存されている
         else:
             for child in self.data_dir.iterdir():
@@ -43,8 +46,7 @@ class CustomDataset(Dataset):
                     and str(int(child.name[:3])) not in self.unknown_class
                 ):
                     self.img_path_list.append(child)
-            self.img_path_list.sort()
-        
+
         assert len(self.img_path_list) > 0, "画像が読み込めませんでした。パスを確認してください。"
 
         # ラベルの数を取得する。
@@ -57,6 +59,19 @@ class CustomDataset(Dataset):
         img = transforms.ToTensor()(img)
         img = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))(img)
         return img
+
+    def get_int2label(self):
+        int2label = {}
+        with open(Path("data/traffic_sign/labels.csv")) as f:
+            csv_reader = csv.reader(f)
+            next(csv_reader)
+
+            for row in csv_reader:
+                key = int(row[0])
+                value = row[1]
+                int2label[key] = value
+
+        return int2label
 
     def __len__(self):
         return len(self.img_path_list)
@@ -76,3 +91,19 @@ class CustomDataset(Dataset):
         img = self.custom_transform(img)
 
         return img, label
+
+# 使用例
+def main():
+    test_dataset = CustomDataset(
+        Path("data/traffic_sign/traffic_Data/TEST"), is_train=False
+    )
+    test_loader = DataLoader(dataset=test_dataset, batch_size=32, shuffle=True)
+    inputs, labels = next(iter(test_loader))
+    for label in labels.tolist():
+        print(test_dataset.int2label[label])
+    plt.imshow(inputs[0].permute(1, 2, 0))
+    plt.show()
+
+
+if __name__ == "__main__":
+    main()

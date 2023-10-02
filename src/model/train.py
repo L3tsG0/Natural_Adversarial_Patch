@@ -18,7 +18,7 @@ class TrainConfig:
     criterion: torch.nn.Module
     train_loader: torch.utils.data.DataLoader
     test_loader: torch.utils.data.DataLoader
-    device: str
+    device: torch.device
 
 
 def train(config: TrainConfig):
@@ -46,7 +46,7 @@ def train(config: TrainConfig):
             optimizer.step()
 
             train_loss += loss.item()
-            predicted_labels = torch.argmax(preds, dim=1)
+            _, predicted_labels = torch.max(preds, 1)
 
             train_correct += (predicted_labels == labels).sum().item()
             train_total += labels.size(0)
@@ -60,11 +60,17 @@ def train(config: TrainConfig):
                     global_step=epoch * len(train_loader)
                     + i * train_loader.batch_size,
                 )
-
+        accuracy = train_correct / train_total
+        print(f"accuracy: {accuracy}")
         train_loss /= len(train_loader)
         writer.add_scalar(
             "train loss(per epoch)",
             train_loss,
+            global_step=epoch + 1,
+        )
+        writer.add_scalar(
+            "train accuracy(per epoch)",
+            accuracy,
             global_step=epoch + 1,
         )
 
@@ -83,7 +89,7 @@ def train(config: TrainConfig):
 
                 test_loss += loss.item()
 
-                predicted_labels = torch.argmax(preds, dim=1)
+                _, predicted_labels = torch.max(preds, 1)
                 test_correct += (predicted_labels == labels).sum().item()
                 test_total += labels.size(0)
 
@@ -93,6 +99,7 @@ def train(config: TrainConfig):
                 test_loop.set_postfix(loss=loss.item())
 
             test_accuracy = test_correct / test_total
+            print(f"test accuracy: {test_accuracy}")
             test_loss /= len(test_loader)
 
             writer.add_scalar(
@@ -112,14 +119,7 @@ def train(config: TrainConfig):
 
 
 def main():
-    """
-    args:
-        log_dir_root: tensorboardのログを保存するディレクトリこのディレクトリのしたに/model_name/が作成されます
-        model: 学習するモデル
-        model_name: モデルの名前 tensorboardのログやチェックポイント(mks)の保存に使われます
-    """
-
-    train_dataset = CustomDataset(Path("data/traffic_sign/traffic_Data/DATA"))
+    train_dataset = CustomDataset(Path("data/traffic_sign/traffic_Data/DATA"), is_train=True)
     test_dataset = CustomDataset(
         Path("data/traffic_sign/traffic_Data/TEST"), is_train=False
     )
