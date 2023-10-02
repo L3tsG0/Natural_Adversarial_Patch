@@ -4,6 +4,43 @@ from PIL import Image
 import numpy as np
 import sys
 
+from torch.utils.data import DataLoader, Dataset
+from torchvision import transforms, datasets
+from torchvision.io import read_image
+import os
+
+transform = transforms.Compose([
+    transforms.Resize((100, 100)),
+    transforms.ToTensor(),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+])
+
+class CustomDataset(Dataset):
+    def __init__(self, root_dir, transform=None):
+        self.root_dir = root_dir
+        self.transform = transform
+        
+        # すべての画像ファイルを取得
+        self.image_files = [f for f in os.listdir(root_dir) if os.path.isfile(os.path.join(root_dir, f)) and f.endswith('.png')]
+
+        # ラベルの一覧
+        self.classes = ["TraficLight", "Stop", "Speedlimit", "Crosswalk"]
+
+    def __len__(self):
+        return len(self.image_files)
+
+    def __getitem__(self, idx):
+        img_name = os.path.join(self.root_dir, self.image_files[idx])
+        image = read_image(img_name)
+
+        # プレフィックスからクラスラベルを取得
+        class_label = str(int(self.image_files[idx].split('_')[0]))
+        label = self.classes.index(class_label)
+        
+        if self.transform:
+            image = self.transform(image)
+
+        return image, label
 
 class MyModel(nn.Module):
     def __init__(self, n_filters, sz_filters, sz_filters2, sz_pool, n_nodes, n_classes):
