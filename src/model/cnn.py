@@ -9,6 +9,7 @@ class CNN(nn.Module):
     ## サイズは[224, 224]の画像を想定
     def __init__(self, n_class):
         super(CNN, self).__init__()
+        self.name = "cnn"
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=128, kernel_size=3)
         self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
         self.conv2 = nn.Conv2d(in_channels=128, out_channels=64, kernel_size=3)
@@ -39,20 +40,10 @@ class CNN(nn.Module):
         x = self.pool5(x)
         x = F.relu(self.conv6(x))
         x = self.pool6(x)
-        x = x.view(1, 256)
+        x = x.view(x.size(0), -1)
         x = F.relu(self.fc1(x))
         x = self.dropout(x)
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return x
 
-
-def main():
-    dataset = CustomDataset(Path("data/traffic_sign/traffic_Data/DATA"))
-    data, label = dataset[1]
-    cnn_model = CNN(57)
-    cnn_model(data)
-
-
-if __name__ == "__main__":
-    main()

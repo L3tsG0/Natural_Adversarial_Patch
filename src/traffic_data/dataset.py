@@ -17,9 +17,13 @@ class CustomDataset(Dataset):
         self.data_dir = data_dir
         self.is_train = is_train
         self.size = size
-        self.unknown_class = ["40", "41", "42", "45", "49", "52", "56", "57"]
+        # self.unknown_class = ["40", "41", "42", "45", "49", "52", "56", "57"]
+        self.unknown_class = []
         self.img_path_list = []
+        self.num_classes = 58 - len(self.unknown_class) # 50
+
         # 訓練の場合は data_dir/クラス名/ファイル名.png の形式で画像が保存されている
+        # unknown_class は除外して、画像のパスを取得する
         if self.is_train:
             for child in self.data_dir.iterdir():
                 if (
@@ -40,8 +44,10 @@ class CustomDataset(Dataset):
                 ):
                     self.img_path_list.append(child)
             self.img_path_list.sort()
-
+        
         assert len(self.img_path_list) > 0, "画像が読み込めませんでした。パスを確認してください。"
+
+        # ラベルの数を取得する。
 
     def custom_transform(self, img):
         """画像の前処理"""
@@ -49,7 +55,6 @@ class CustomDataset(Dataset):
             (self.size, self.size)
         )  # 参照: https://www.kaggle.com/code/boulahchichenadir/cnn-classification
         img = transforms.ToTensor()(img)
-        img = img.unsqueeze(0)
         img = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))(img)
         return img
 
@@ -68,8 +73,6 @@ class CustomDataset(Dataset):
             label = int(label)
 
         # 最後に処理
-        img.show()
-        print(label)
         img = self.custom_transform(img)
 
         return img, label
