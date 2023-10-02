@@ -1,99 +1,58 @@
-import torch
+from pathlib import Path
 import torch.nn as nn
-from PIL import Image
-import numpy as np
-import sys
+import torch.nn.functional as F
 
-from torch.utils.data import DataLoader, Dataset
-from torchvision import transforms, datasets
-from torchvision.io import read_image
-import os
+from src.traffic_data.dataset import CustomDataset
 
-transform = transforms.Compose([
-    transforms.Resize((100, 100)),
-    transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-])
 
-class CustomDataset(Dataset):
-    def __init__(self, root_dir, transform=None):
-        self.root_dir = root_dir
-        self.transform = transform
-        
-        # すべての画像ファイルを取得
-        self.image_files = [f for f in os.listdir(root_dir) if os.path.isfile(os.path.join(root_dir, f)) and f.endswith('.png')]
-
-        # ラベルの一覧
-        self.classes = ["TraficLight", "Stop", "Speedlimit", "Crosswalk"]
-
-    def __len__(self):
-        return len(self.image_files)
-
-    def __getitem__(self, idx):
-        img_name = os.path.join(self.root_dir, self.image_files[idx])
-        image = read_image(img_name)
-
-        # プレフィックスからクラスラベルを取得
-        class_label = str(int(self.image_files[idx].split('_')[0]))
-        label = self.classes.index(class_label)
-        
-        if self.transform:
-            image = self.transform(image)
-
-        return image, label
-
-class MyModel(nn.Module):
-    def __init__(self, n_filters, sz_filters, sz_filters2, sz_pool, n_nodes, n_classes):
-        super(MyModel, self).__init__()
-
-        self.n_filters = n_filters
-
-        self.conv1 = nn.Conv2d(3, n_filters, kernel_size=sz_filters)
-        self.conv2 = nn.Conv2d(n_filters, n_filters, kernel_size=sz_filters)
-        self.pool = nn.MaxPool2d(kernel_size=sz_pool)
-        self.conv3 = nn.Conv2d(n_filters, n_filters // 2, kernel_size=sz_filters2)
-        self.conv4 = nn.Conv2d(n_filters // 2, n_filters // 2, kernel_size=sz_filters2)
-        self.dropout = nn.Dropout(0.5)
-        # self.fc1 = nn.Linear(4 * 4 * (n_filters // 2), n_nodes)
-        self.fc1 = nn.Linear(30 * 21 * 21, n_nodes)
-        self.fc2 = nn.Linear(n_nodes, n_classes)
+class CNN(nn.Module):
+    ## サイズは[224, 224]の画像を想定
+    def __init__(self, n_class):
+        super(CNN, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=128, kernel_size=3)
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv2 = nn.Conv2d(in_channels=128, out_channels=64, kernel_size=3)
+        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3)
+        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv4 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3)
+        self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv5 = nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3)
+        self.pool5 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv6 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3)
+        self.pool6 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.fc1 = nn.Linear(256, 64)
+        self.dropout = nn.Dropout(0.2)
+        self.fc2 = nn.Linear(64, 128)
+        self.fc3 = nn.Linear(128, n_class)
 
     def forward(self, x):
-        x = torch.relu(self.conv1(x))
-        x = torch.relu(self.conv2(x))
-        x = self.pool(x)
-        x = torch.relu(self.conv3(x))
-        x = torch.relu(self.conv4(x))
-        x = self.pool(x)
-        # print(x.shape) [1, 30, 21, 21]
-        x = x.view(-1, 30 * 21 * 21)
-        x = torch.relu(self.fc1(x))
+        x = F.relu(self.conv1(x))
+        x = self.pool1(x)
+        x = F.relu(self.conv2(x))
+        x = self.pool2(x)
+        x = F.relu(self.conv3(x))
+        x = self.pool3(x)
+        x = F.relu(self.conv4(x))
+        x = self.pool4(x)
+        x = F.relu(self.conv5(x))
+        x = self.pool5(x)
+        x = F.relu(self.conv6(x))
+        x = self.pool6(x)
+        x = x.view(1, 256)
+        x = F.relu(self.fc1(x))
         x = self.dropout(x)
-        x = self.fc2(x)
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
         return x
 
 
 def main():
-    # ハイパーパラメータを設定
-    n_filters = 60
-    sz_filters = (5, 5)
-    sz_filters2 = (3, 3)
-    sz_pool = (2, 2)
-    n_nodes = 500
-    n_classes = 57 
-
-    # 画像ファイルを開く
-    img_path = 'data/traffic_sign/traffic_Data/DATA/0/000_1_0001.png'
-    image = Image.open(img_path)
-    image = image.resize((100, 100))
-    image_np = np.array(image)
-    image_tensor = torch.from_numpy(image_np)
-    image_tensor = image_tensor.permute(2, 0, 1)
-    image_tensor = image_tensor.unsqueeze(0)
-    image_tensor = image_tensor.to(torch.float32)
-    model = MyModel(n_filters, sz_filters, sz_filters2, sz_pool, n_nodes, n_classes)
-    output = model(image_tensor)
+    dataset = CustomDataset(Path("data/traffic_sign/traffic_Data/DATA"))
+    data, label = dataset[1]
+    cnn_model = CNN(57)
+    cnn_model(data)
 
 
-if __name__ == '__main__':
-    main() 
+if __name__ == "__main__":
+    main()
