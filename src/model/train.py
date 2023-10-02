@@ -25,75 +25,89 @@ def train(config: TrainConfig):
     train_loader, test_loader = config.train_loader, config.test_loader
     criterion, optimizer = config.criterion, config.optimizer
     model = config.model.to(config.device)
-    writer = SummaryWriter(log_dir=f"log{config.model.name}/")  # 途中経過を確認する
+
+    # writer = SummaryWriter(log_dir=f"log_{config.model.name}/")  # 途中経過を確認する
 
     for epoch in range(config.epochs):
-        model.train()
         train_loss = 0.0
         train_loop = tqdm(train_loader, total=len(train_loader), leave=True)
         train_loop.set_description(f"Epoch [{epoch}/{config.epochs}]")
         total_train_batch = len(train_loader)
 
         # 訓練ループ
-        for train_batch_idx, (X_batch, y_batch) in enumerate(train_loop):
+        for X_batch, y_batch in train_loop:
             X_batch, y_batch = X_batch.to(config.device), y_batch.to(
                 config.device
             )
+            optimizer.zero_grad()
             y_batch_pred = model(X_batch)
             loss = criterion(y_batch_pred, y_batch)
             train_loss += loss.item()
-            optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
             train_loop.set_postfix(loss=loss.item())
 
-            if train_batch_idx % (total_train_batch // 100) == 0:
-                # TensorBoardにログを書き出す
-                writer.add_scalar(
-                    "train loss",
-                    loss.item(),
-                    global_step=epoch * len(train_loader)
-                    + train_batch_idx * train_loader.batch_size,
-                )
+            # if train_batch_idx % (total_train_batch // 100) == 0:
+                # writer.add_scalar(
+                #     "train loss",
+                #     loss.item(),
+                #     global_step=epoch * len(train_loader)
+                #     + train_batch_idx * train_loader.batch_size,
+                # )
 
         train_loss /= len(train_loader)
-        writer.add_scalar(
-            "train loss(per epoch)",
-            train_loss,
-            global_step=epoch + 1,
-        )
-
-        model.eval()
-        test_loss = 0.0
-        test_loop = tqdm(test_loader, total=len(test_loader), leave=True)
+        # writer.add_scalar(
+        #     "train loss(per epoch)",
+        #     train_loss,
+        #     global_step=epoch + 1,
+        # )
 
         with torch.no_grad():
-            for test_batch_idx, (X_batch, y_batch) in enumerate(test_loop):
+            test_loss = 0.0
+            test_loop = tqdm(test_loader, total=len(test_loader), leave=True)
+
+            correct = 0
+            total = 0
+
+            for X_batch, y_batch in test_loop:
                 X_batch, y_batch = X_batch.to(config.device), y_batch.to(
                     config.device
                 )
                 y_batch_pred = model(X_batch)
                 loss = criterion(y_batch_pred, y_batch)
                 test_loss += loss.item()
+                
+                predicted = torch.argmax(y_batch_pred, dim=1).tolist()
+                print(predicted)
+
+                correct += (predicted == y_batch).sum().item()
+                total += y_batch.size(0)
 
                 test_loop.set_description(
-                    f"Epoch [{epoch}/{config.epochs}] test"
+                    f"Epoch [{epoch}/{config.epochs} test"
                 )
-                test_loop.set_postfix(loss=loss.item())
+                test_loop.set_postfix(
+                    loss=loss.item(), acc=round(correct / total * 100, 1)
+                )
 
+        accuracy = correct / total
         test_loss /= len(test_loader)
 
-        writer.add_scalar(
-            "test loss(per epoch)", test_loss, global_step=epoch + 1
-        )
+        # writer.add_scalar(
+        #     "test loss(per epoch)", test_loss, global_step=epoch + 1
+        # )
+        # writer.add_scalar(
+        #     "test accuracy(per epoch)", accuracy, global_step=epoch + 1
+        #)
 
-        torch.save(
-            model.state_dict(),
-            f"{config.model.name}_{epoch}.pth",
-        )
+        if epoch % 5 == 0:
+            torch.save(
+                model.state_dict(),
+                f"{config.model.name}_{epoch}.pth",
+            )
 
-    writer.close()
+    # writer.close()
 
 
 def main():
@@ -123,7 +137,7 @@ def main():
         criterion=torch.nn.CrossEntropyLoss(),
         train_loader=train_loader,
         test_loader=test_loader,
-        device=torch.device('mps'),
+        device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
     )
     train(train_config)
 
