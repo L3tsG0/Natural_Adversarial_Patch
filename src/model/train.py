@@ -22,92 +22,93 @@ class TrainConfig:
 
 
 def train(config: TrainConfig):
+    writer = SummaryWriter(log_dir=f"log_{config.model.name}/")  # 途中経過を確認する
     train_loader, test_loader = config.train_loader, config.test_loader
     criterion, optimizer = config.criterion, config.optimizer
     model = config.model.to(config.device)
 
-    # writer = SummaryWriter(log_dir=f"log_{config.model.name}/")  # 途中経過を確認する
-
     for epoch in range(config.epochs):
-        train_loss = 0.0
         train_loop = tqdm(train_loader, total=len(train_loader), leave=True)
         train_loop.set_description(f"Epoch [{epoch}/{config.epochs}]")
-        total_train_batch = len(train_loader)
+        num_train_batch = len(train_loader)
 
         # 訓練ループ
-        for X_batch, y_batch in train_loop:
-            X_batch, y_batch = X_batch.to(config.device), y_batch.to(
-                config.device
-            )
+        train_correct, train_total = 0, 0  # accuracy計算用
+        train_loss = 0.0  # epochごとのloss計算用
+        for i, data in enumerate(train_loop):
+            inputs, labels = data
+            inputs, labels = inputs.to(config.device), labels.to(config.device)
             optimizer.zero_grad()
-            y_batch_pred = model(X_batch)
-            loss = criterion(y_batch_pred, y_batch)
-            train_loss += loss.item()
+
+            preds = model(inputs)
+            loss = criterion(preds, labels)
             loss.backward()
             optimizer.step()
 
+            train_loss += loss.item()
+            predicted_labels = torch.argmax(preds, dim=1)
+
+            train_correct += (predicted_labels == labels).sum().item()
+            train_total += labels.size(0)
+
             train_loop.set_postfix(loss=loss.item())
 
-            # if train_batch_idx % (total_train_batch // 100) == 0:
-                # writer.add_scalar(
-                #     "train loss",
-                #     loss.item(),
-                #     global_step=epoch * len(train_loader)
-                #     + train_batch_idx * train_loader.batch_size,
-                # )
+            if i % (num_train_batch // 100) == 0:
+                writer.add_scalar(
+                    "train loss",
+                    loss.item(),
+                    global_step=epoch * len(train_loader)
+                    + i * train_loader.batch_size,
+                )
 
         train_loss /= len(train_loader)
-        # writer.add_scalar(
-        #     "train loss(per epoch)",
-        #     train_loss,
-        #     global_step=epoch + 1,
-        # )
+        writer.add_scalar(
+            "train loss(per epoch)",
+            train_loss,
+            global_step=epoch + 1,
+        )
 
         with torch.no_grad():
-            test_loss = 0.0
             test_loop = tqdm(test_loader, total=len(test_loader), leave=True)
 
-            correct = 0
-            total = 0
-
-            for X_batch, y_batch in test_loop:
-                X_batch, y_batch = X_batch.to(config.device), y_batch.to(
+            # テストループ
+            test_correct, test_total = 0, 0
+            test_loss = 0.0
+            for inputs, labels in test_loop:
+                inputs, labels = inputs.to(config.device), labels.to(
                     config.device
                 )
-                y_batch_pred = model(X_batch)
-                loss = criterion(y_batch_pred, y_batch)
-                test_loss += loss.item()
-                
-                predicted = torch.argmax(y_batch_pred, dim=1).tolist()
-                print(predicted)
+                preds = model(inputs)
+                loss = criterion(preds, labels)
 
-                correct += (predicted == y_batch).sum().item()
-                total += y_batch.size(0)
+                test_loss += loss.item()
+
+                predicted_labels = torch.argmax(preds, dim=1)
+                test_correct += (predicted_labels == labels).sum().item()
+                test_total += labels.size(0)
 
                 test_loop.set_description(
                     f"Epoch [{epoch}/{config.epochs} test"
                 )
-                test_loop.set_postfix(
-                    loss=loss.item(), acc=round(correct / total * 100, 1)
-                )
+                test_loop.set_postfix(loss=loss.item())
 
-        accuracy = correct / total
-        test_loss /= len(test_loader)
+            test_accuracy = test_correct / test_total
+            test_loss /= len(test_loader)
 
-        # writer.add_scalar(
-        #     "test loss(per epoch)", test_loss, global_step=epoch + 1
-        # )
-        # writer.add_scalar(
-        #     "test accuracy(per epoch)", accuracy, global_step=epoch + 1
-        #)
+            writer.add_scalar(
+                "test loss(per epoch)", test_loss, global_step=epoch + 1
+            )
+            writer.add_scalar(
+                "test accuracy(per epoch)", test_accuracy, global_step=epoch + 1
+            )
 
         if epoch % 5 == 0:
             torch.save(
                 model.state_dict(),
-                f"{config.model.name}_{epoch}.pth",
+                Path(f"src/model/{config.model.name}_{epoch}.pth"),
             )
 
-    # writer.close()
+    writer.close()
 
 
 def main():

@@ -20,7 +20,7 @@ class CustomDataset(Dataset):
         # self.unknown_class = ["40", "41", "42", "45", "49", "52", "56", "57"]
         self.unknown_class = []
         self.img_path_list = []
-        self.num_classes = 58 - len(self.unknown_class) # 50
+        self.num_classes = 58 - len(self.unknown_class)
 
         # 訓練の場合は data_dir/クラス名/ファイル名.png の形式で画像が保存されている
         # unknown_class は除外して、画像のパスを取得する
