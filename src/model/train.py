@@ -10,6 +10,8 @@ from src.model.cnn import CNN, simpleCNN
 from src.traffic_data.dataset import CustomDataset
 
 
+
+
 @dataclass
 class TrainConfig:
     model: torch.nn.Module

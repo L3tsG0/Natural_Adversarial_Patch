@@ -5,6 +5,9 @@ import torch.nn.functional as F
 from src.traffic_data.dataset import CustomDataset
 
 
+
+
+
 class CNN(nn.Module):
     ## サイズは[224, 224]の画像を想定
     def __init__(self, n_class):

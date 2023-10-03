@@ -2,14 +2,13 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-
 from src.model.cnn import simpleCNN
 from src.traffic_data.dataset import CustomDataset
 
 
 def load_cnn_model(
     path: Path, num_classes: int = 58, device: torch.device = None
-):
+) -> simpleCNN:
     model = simpleCNN(num_classes)
     model.load_state_dict(torch.load(map_location=device, f=path))
     return model
