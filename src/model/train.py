@@ -6,7 +6,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 
-from src.model.cnn import CNN
+from src.model.cnn import CNN, simpleCNN
 from src.traffic_data.dataset import CustomDataset
 
 
@@ -119,7 +119,9 @@ def train(config: TrainConfig):
 
 
 def main():
-    train_dataset = CustomDataset(Path("data/traffic_sign/traffic_Data/DATA"), is_train=True)
+    train_dataset = CustomDataset(
+        Path("data/traffic_sign/traffic_Data/DATA"), is_train=True
+    )
     test_dataset = CustomDataset(
         Path("data/traffic_sign/traffic_Data/TEST"), is_train=False
     )
@@ -129,16 +131,20 @@ def main():
     )
     test_loader = DataLoader(dataset=test_dataset, batch_size=32, shuffle=True)
 
-    model = CNN(train_dataset.num_classes)
+    model = simpleCNN(train_dataset.num_classes)
 
     train_config = TrainConfig(
-        model=CNN(train_dataset.num_classes),
+        model=model,
         epochs=100,
-        optimizer=torch.optim.Adam(model.parameters(), lr=0.001),
+        optimizer=torch.optim.Adam(model.parameters()),
         criterion=torch.nn.CrossEntropyLoss(),
         train_loader=train_loader,
         test_loader=test_loader,
-        device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+        # device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+        # device=torch.device(
+        #     "mps" if torch.backends.mkl.is_available() else "cpu"
+        # ),
+        device=torch.device("cpu")
     )
     train(train_config)
 

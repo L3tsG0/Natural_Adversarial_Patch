@@ -57,7 +57,9 @@ class CustomDataset(Dataset):
             (self.size, self.size)
         )  # 参照: https://www.kaggle.com/code/boulahchichenadir/cnn-classification
         img = transforms.ToTensor()(img)
-        img = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))(img)
+        img = transforms.Normalize(
+            (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
+        )(img)
         return img
 
     def get_int2label(self):
@@ -91,6 +93,7 @@ class CustomDataset(Dataset):
         img = self.custom_transform(img)
 
         return img, label
+
 
 # 使用例
 def main():
