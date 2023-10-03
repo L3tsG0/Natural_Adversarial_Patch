@@ -60,8 +60,8 @@ def train(config: TrainConfig):
                     global_step=epoch * len(train_loader)
                     + i * train_loader.batch_size,
                 )
-        accuracy = train_correct / train_total
-        print(f"accuracy: {accuracy}")
+        train_accuracy = train_correct / train_total
+        print(f"train_accuracy: {train_accuracy}")
         train_loss /= len(train_loader)
         writer.add_scalar(
             "train loss(per epoch)",
@@ -70,7 +70,7 @@ def train(config: TrainConfig):
         )
         writer.add_scalar(
             "train accuracy(per epoch)",
-            accuracy,
+            train_accuracy,
             global_step=epoch + 1,
         )
 
@@ -136,15 +136,11 @@ def main():
     train_config = TrainConfig(
         model=model,
         epochs=100,
-        optimizer=torch.optim.Adam(model.parameters()),
+        optimizer=torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.001),
         criterion=torch.nn.CrossEntropyLoss(),
         train_loader=train_loader,
         test_loader=test_loader,
-        # device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
-        # device=torch.device(
-        #     "mps" if torch.backends.mkl.is_available() else "cpu"
-        # ),
-        device=torch.device("cpu")
+        device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
     )
     train(train_config)
 
