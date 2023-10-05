@@ -1,4 +1,3 @@
-from torch import tensor
 import torch
 from pathlib import Path
 from src.model.attacker import (
@@ -6,45 +5,44 @@ from src.model.attacker import (
     custom_transform,
     paste_rotated_image_with_alpha_at_center,
 )
-from src.model.cnn import simpleCNN
-from src.model.evaluation import load_cnn_model
+from src.model.evaluation import load_model
 from PIL import Image
 from torch import Tensor
 
+usecsv = True
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 
 # setting from the result of PEPG
 position = torch.tensor([0.0000, 0.5173, 0.0000])
 
 PatchCenter: tuple[Tensor, Tensor] = (position[0], position[1])
-patch_angle_ratio: Tensor = position[2]
-patch_size_ratio = 0.3
+patch_angle_ratio: float = float(position[2])
+patch_size_ratio: float = 0.3
 
 
 # load batterfly img
 batterfly_img_path = Path("src/model/Attack_data/0010001.png")
-batterfly_img: Image = CutoutEdge(batterfly_img_path)
+batterfly_img: Image.Image = CutoutEdge(batterfly_img_path)
 
 # loat target img fom tmp file
 img_path: Path = Path("src/model/Attack_data/000_1_0003_1_j.png")
-img: Image = Image.open(img_path)  # type: ignore
+img: Image.Image = Image.open(img_path) 
 
 # load the model
-model: simpleCNN = load_cnn_model(
+model: torch.nn.Module = load_model(
     Path("src/model/trained_CNN.pth"),
-    58,
     device=device,
 )
 
 # loat the label from the file name
 
-label = int(img_path.name.split("_")[0])
-label = int(label)
-label: Tensor = torch.tensor([label])
+if usecsv is True:
+    label:Tensor = torch.tensor([int(img_path.name.split("_")[0])])
+else:
+    label: Tensor = torch.argmax(model(img))
 
 # apply a patch to the image
-img_with_patch = paste_rotated_image_with_alpha_at_center(
+img_with_patch:Image.Image = paste_rotated_image_with_alpha_at_center(
     background_Image=img,
     overlay_Image=batterfly_img,
     center_position_ratio=PatchCenter,
@@ -56,8 +54,7 @@ img_with_patch.save("test.png")
 # predict the label
 img_tensor: Tensor = custom_transform(img_with_patch)
 criterion = torch.nn.CrossEntropyLoss()
-output = model(img_tensor)
-print(f"predict:{torch.argmax(output)}")
+output: Tensor = model(img_tensor)
+predict_label:int = int(torch.argmax(output).item())
+print(f"predict:{predict_label}")
 print(f"Answer: {label.item()}")
-# loss = criterion(output,label)
-# loss = loss.detach()

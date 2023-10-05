@@ -14,7 +14,7 @@ import torch.utils.tensorboard
 from torch.utils.tensorboard.writer import SummaryWriter
 from datetime import datetime
 from typing import Final
-
+from src.model.evaluation import load_model
 
 def paste_with_alpha(background, overlay, position=(0, 0)):
     """
@@ -108,9 +108,11 @@ def CutoutEdge(img_path, margin=0.05):
 def load_cnn_model(
     path: Path, num_classes: int = 58, device: torch.device = None
 ) -> simpleCNN:
-    model = simpleCNN(num_classes)
-    model.load_state_dict(torch.load(map_location=device, f=path))
+    model = simpleCNN(num_classes)# モデル構造の定義
+    model.load_state_dict(torch.load(map_location=device, f=path))# 重みファイルのロード
     return model
+
+
 
 
 def compute_cnn_test_accuracy(device: torch.device):
@@ -147,16 +149,12 @@ def custom_transform(img):
 
 
 def calc_reward(
-    img, label_, overlay, PatchCenters: list[list[float]], batch_size, patch_size_ratio
+    img, label_, overlay, PatchCenters: list[list[float]], batch_size, patch_size_ratio,target_model=None
 ) -> Tensor:
     reward_: list[float] = []
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    model: simpleCNN = load_cnn_model(
-        Path("src/model/trained_CNN.pth"),
-        58,
-        device=device,
-    )
+    model = target_model
 
     label: Tensor = torch.tensor([label_])
 
@@ -171,14 +169,12 @@ def calc_reward(
             img,
             overlay,
             center_position_ratio=PatchCenter,
-            ratio=patch_size_ratio,
+            size_ratio=patch_size_ratio,
             angle_ratio=patch_angle_ratio,
         )
 
-        # savefig in tmpfile
-        # img_with_patch.save(Path(f"tmp/output{i}.jpg"))
 
-        # import img fom tmp file
+        # import img from tmp file
 
         img_tensor = custom_transform(img_with_patch)
         criterion = torch.nn.CrossEntropyLoss()
@@ -189,6 +185,58 @@ def calc_reward(
         reward_.append(loss)
 
     return torch.stack(reward_)
+
+def dump_patched_image_and_predict_label(position: Tensor):
+    usecsv = True
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # setting from the result of PEPG
+    position = torch.tensor([0.0000, 0.5173, 0.0000])
+
+    PatchCenter: tuple[Tensor, Tensor] = (position[0], position[1])
+    patch_angle_ratio: float = float(position[2])
+    patch_size_ratio: float = 0.3
+
+
+    # load batterfly img
+    batterfly_img_path = Path("src/model/Attack_data/0010001.png")
+    batterfly_img: Image.Image = CutoutEdge(batterfly_img_path)
+
+    # loat target img fom tmp file
+    img_path: Path = Path("src/model/Attack_data/000_1_0003_1_j.png")
+    img: Image.Image = Image.open(img_path)  # type: ignore
+
+    # load the model
+    model: torch.nn.Module = load_model(
+        Path("src/model/trained_CNN.pth"),
+        device=device,
+    )
+
+    # loat the label from the file name
+
+    if usecsv is True:
+        label:Tensor = torch.tensor([int(img_path.name.split("_")[0])])
+    else:
+        label: Tensor = torch.argmax(model(img))
+
+    # apply a patch to the image
+    img_with_patch:Image.Image = paste_rotated_image_with_alpha_at_center(
+        background_Image=img,
+        overlay_Image=batterfly_img,
+        center_position_ratio=PatchCenter,
+        size_ratio=patch_size_ratio,
+        angle_ratio=patch_angle_ratio,
+    )
+    img_with_patch.save("test.png")
+
+    # predict the label
+    img_tensor: Tensor = custom_transform(img_with_patch)
+    criterion = torch.nn.CrossEntropyLoss()
+    output: Tensor = model(img_tensor)
+    predict_label:int = int(torch.argmax(output).item())
+    print(f"predict:{predict_label}")
+    print(f"Answer: {label.item()}")
+
 
 
 def main():
@@ -203,40 +251,45 @@ def main():
     lr = 0.002
 
     # setting for log of PEPG
-    dir_name = now.strftime("runs/%Y%m%d_%H%M%S")
+    dir_name: str = now.strftime("runs/%Y%m%d_%H%M%S")
     writer = SummaryWriter(dir_name)
 
     max_rewards: list[float] = []
     baseline_history: list[float] = []
+    highest_reward:float = float("-inf")
+    best_patch_position = None
 
     # define initial state
     xy_mu_init = torch.rand(3)
     xy_sigma_init = torch.tensor([2.0 for i in range(N)])
-    xy_mu: Tensor = torch.tensor(xy_mu_init)
-    xy_sigma: Tensor = torch.tensor(xy_sigma_init)
+    xy_mu: Tensor = xy_mu_init.clone().detach()
+    xy_sigma: Tensor = xy_sigma_init.clone().detach()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # open the target image
+    # todo:UI から読み込めるようにする
     img_path: Path = Path("src/model/Attack_data/000_1_0003_1_j.png")
     img: Image = Image.open(img_path)  # type: ignore
     img_tensor = custom_transform(img)
 
     # open the batterfly image
-    batterfly_img_path = Path("src/model/Attack_data/0010001.png")
-    batterfly_img = CutoutEdge(batterfly_img_path)
+    # todo:UIから画像を読み込めるようにする
+
+    batterfly_img_path = Path("src/model/Attack_data/0010001.png")# パッチのパス
+    batterfly_img: Image = CutoutEdge(batterfly_img_path)
 
     # get ground truth label from the file name.
+    # ファイル名から，正解ラベル側ことが前提(データセット依存)
+    # todo:自分で与えるか，(攻撃加える前の)画像のモデルの出力を正解とする
+
     label = int(img_path.name.split("_")[0])
     label = int(label)
     label: Tensor = torch.tensor([label])
 
     # load the model
-    model: simpleCNN = load_cnn_model(
-        Path("src/model/trained_CNN.pth"),
-        58,
-        device=device,
-    )
+
+    model = torch.load("src/model/trained_CNN.pth")
 
     criterion = torch.nn.CrossEntropyLoss()
 
@@ -254,6 +307,7 @@ def main():
         f.write(f"batch:{batch}\n")
         f.write(f"PatchNum:{N/2}\n")
 
+    # PEPGアルゴリズムを用いたパッチ貼り付け位置の最適化
     with torch.no_grad():
         for iter in tqdm(range(num_iter)):
             rewards: Tensor = torch.tensor([])
@@ -286,6 +340,7 @@ def main():
                 PatchCenters=xy_positive,
                 batch_size=batch,
                 patch_size_ratio=patch_size_ratio,
+                target_model = model,
             )
             r_negative: Tensor = calc_reward(
                 img=img,
@@ -294,6 +349,7 @@ def main():
                 PatchCenters=xy_negative,
                 batch_size=batch,
                 patch_size_ratio=patch_size_ratio,
+                target_model = model,
             )
 
             # select max_reward for regularization
@@ -301,8 +357,11 @@ def main():
             combine_reward: Tensor = torch.cat((r_positive, r_negative))
 
             max_reward: float = torch.max(combine_reward).item()
-            max_reward_index: int = torch.argmax(combine_reward).item()
+            max_reward_index: int = torch.argmax(combine_reward).item() 
             max_rewards.append(max_reward)
+            if highest_reward < max_reward:
+                highest_reward = max_reward
+                best_patch_position = xy_combined[max_reward_index].tolist()
 
             with open("PatchApply.txt", "a") as f:
                 f.write(f"max_reward:{max_reward}\n")
@@ -312,7 +371,7 @@ def main():
 
             writer.add_scalar("max_reward", max_reward, iter)
 
-            # calc baseline fro regularization
+            # calc baseline for regularization
 
             rewards: Tensor = torch.cat((rewards, combine_reward))  # change
             baseline: float = torch.mean(rewards).item()
@@ -343,7 +402,9 @@ def main():
 
             writer.add_scalar("xy_mu", xy_mu[0], iter)
             writer.add_scalar("xy_sigma", xy_sigma[0], iter)
-
+    return highest_reward,best_patch_position
 
 if __name__ == "__main__":
-    main()
+    max_reward,best_position = main()
+    print(f"max_reward:{max_reward}")
+    print(f"Best Patch Position: {best_position}")

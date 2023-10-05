@@ -10,8 +10,6 @@ from src.model.cnn import CNN, simpleCNN
 from src.traffic_data.dataset import CustomDataset
 
 
-
-
 @dataclass
 class TrainConfig:
     model: torch.nn.Module
@@ -28,6 +26,7 @@ def train(config: TrainConfig):
     train_loader, test_loader = config.train_loader, config.test_loader
     criterion, optimizer = config.criterion, config.optimizer
     model = config.model.to(config.device)
+    best_accuracy: float = -1.
 
     for epoch in range(config.epochs):
         train_loop = tqdm(train_loader, total=len(train_loader), leave=True)
@@ -59,8 +58,7 @@ def train(config: TrainConfig):
                 writer.add_scalar(
                     "train loss",
                     loss.item(),
-                    global_step=epoch * len(train_loader)
-                    + i * train_loader.batch_size,
+                    global_step=epoch * len(train_loader) + i * train_loader.batch_size,
                 )
         train_accuracy = train_correct / train_total
         print(f"train_accuracy: {train_accuracy}")
@@ -83,9 +81,7 @@ def train(config: TrainConfig):
             test_correct, test_total = 0, 0
             test_loss = 0.0
             for inputs, labels in test_loop:
-                inputs, labels = inputs.to(config.device), labels.to(
-                    config.device
-                )
+                inputs, labels = inputs.to(config.device), labels.to(config.device)
                 preds = model(inputs)
                 loss = criterion(preds, labels)
 
@@ -95,27 +91,27 @@ def train(config: TrainConfig):
                 test_correct += (predicted_labels == labels).sum().item()
                 test_total += labels.size(0)
 
-                test_loop.set_description(
-                    f"Epoch [{epoch}/{config.epochs} test"
-                )
+                test_loop.set_description(f"Epoch [{epoch}/{config.epochs} test")
                 test_loop.set_postfix(loss=loss.item())
 
             test_accuracy = test_correct / test_total
             print(f"test accuracy: {test_accuracy}")
             test_loss /= len(test_loader)
 
-            writer.add_scalar(
-                "test loss(per epoch)", test_loss, global_step=epoch + 1
-            )
+            writer.add_scalar("test loss(per epoch)", test_loss, global_step=epoch + 1)
             writer.add_scalar(
                 "test accuracy(per epoch)", test_accuracy, global_step=epoch + 1
             )
 
-        if epoch % 5 == 0:
-            torch.save(
-                model.state_dict(),
-                Path(f"src/model/{config.model.name}_{epoch}.pth"),
-            )
+        # if epoch % 5 == 0:
+        #     torch.save(
+        #         model.state_dict(),
+        #         Path(f"src/model/{config.model.name}_{epoch}.pth"),
+        #     )
+            # evaluationの精度が最高になった時，モデルの重みを保存
+            if best_accuracy<test_accuracy:
+            
+                torch.save(model, f="str/model/{config.model.name}_{epoch}_model.pth")
 
     writer.close()
 
@@ -128,9 +124,7 @@ def main():
         Path("data/traffic_sign/traffic_Data/TEST"), is_train=False
     )
 
-    train_loader = DataLoader(
-        dataset=train_dataset, batch_size=32, shuffle=True
-    )
+    train_loader = DataLoader(dataset=train_dataset, batch_size=32, shuffle=True)
     test_loader = DataLoader(dataset=test_dataset, batch_size=32, shuffle=True)
 
     model = simpleCNN(train_dataset.num_classes)

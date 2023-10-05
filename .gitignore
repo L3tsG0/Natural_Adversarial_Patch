@@ -12,3 +12,5 @@ src/traffic_Data
 /runs
 test.png
 uni.png
+/log_simpleCNN
+PatchApply.txt

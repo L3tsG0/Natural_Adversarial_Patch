@@ -2,6 +2,7 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+
 from src.model.cnn import simpleCNN
 from src.traffic_data.dataset import CustomDataset
 
@@ -9,8 +10,15 @@ from src.traffic_data.dataset import CustomDataset
 def load_cnn_model(
     path: Path, num_classes: int = 58, device: torch.device = None
 ) -> simpleCNN:
+    """パラメータのみ保存されたモデルを読み込む"""
     model = simpleCNN(num_classes)
     model.load_state_dict(torch.load(map_location=device, f=path))
+    return model
+
+
+def load_model(path: Path, device: torch.device = None) -> torch.nn.Module:
+    """モデル構造を含めて保存されたモデルを読み込む"""
+    model = torch.load(map_location=device, f=path)
     return model
 
 
@@ -20,9 +28,8 @@ def compute_cnn_test_accuracy(device: torch.device):
     )
     test_loader = DataLoader(dataset=test_dataset, batch_size=32, shuffle=True)
 
-    model = load_cnn_model(
+    model = load_model(
         Path("src/model/trained_CNN.pth"),
-        test_dataset.num_classes,
         device=device,
     )
     correct = 0
