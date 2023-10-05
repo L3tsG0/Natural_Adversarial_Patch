@@ -5,3 +5,12 @@ data/*.png
 __pycache__/
 data/moth_data_orig
 data/data
+data/traffic_sign
+src/traffic_data
+src/traffic_Data
+*.csv
+/runs
+test.png
+uni.png
+/log_simpleCNN
+PatchApply.txt
