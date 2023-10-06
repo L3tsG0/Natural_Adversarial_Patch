@@ -27,7 +27,7 @@ class AEengine_interface(metaclass=abc.ABCMeta):
 
     #学習開始の関数:攻撃対象のパスと学習回数を引数で渡す
     @abc.abstractmethod
-    def start_learning(self, Target_of_attack_path: str, learning_cycles: int):
+    def start_learning(self, Target_model_path: str, Target_image_path: str, patch_image_path: str, learning_cycles: int):
         pass
 
     #学習停止の関数

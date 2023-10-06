@@ -2,6 +2,7 @@ from UI.AEengine_interface import AEengine_interface
 from UI.ui import UI
 import time
 import threading
+import src.model.attacker as attacker
 
 def loop(interface: AEengine_interface):
     prevtime = time.time()   
@@ -12,7 +13,7 @@ def loop(interface: AEengine_interface):
             return
 
 
-class AEEngine(AEengine_interface):
+class AEEngine_interface_implemented(AEengine_interface):
     def export_AEPatch(self, filename: str):
         print(f"Dumped patch: {filename}")
 
@@ -20,15 +21,16 @@ class AEEngine(AEengine_interface):
         print(f"Dumped model: {filename}")
 
     #学習開始の関数:攻撃対象のパスと学習回数を引数で渡す
-    def start_learning(self, Target_of_attack_path: str, learning_cycles: int):
-        print(f"Start learning.\npath: {Target_of_attack_path}\nlearning cycles: {learning_cycles}")
+    def start_learning(self, Target_model_path: str, Target_image_path: str, patch_image_path: str, learning_cycles: int):
+        print(f"Start learning.\nmodel path: {Target_model_path}\ntarget image: {Target_image_path}\nlearning cycles: {learning_cycles}")
+        attacker.main(Target_model_path, Target_image_path, patch_image_path, learning_cycles)
 
     #学習停止の関数
     def stop_learning(self):
         print(f"Stop learning:")
 
 if __name__ == "__main__":
-    interface : AEengine_interface = AEEngine()
+    interface : AEengine_interface = AEEngine_interface_implemented()
     ui: UI = UI(interface)
     interface.set_end_1epoch(ui.end_1epoch)
     thread1 = threading.Thread(target=loop, args=[interface])

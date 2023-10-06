@@ -237,9 +237,16 @@ def dump_patched_image_and_predict_label(position: Tensor):
     print(f"predict:{predict_label}")
     print(f"Answer: {label.item()}")
 
+stop = False
+def stop_cycles():
+    global stop
+    stop = True
 
 
-def main():
+
+def main(target_model_path:str, target_image_path: str, patch_image_path: str, learning_cycles: int):
+    global stop
+
     # define the patch size
     patch_size_ratio = 0.2
 
@@ -247,7 +254,7 @@ def main():
     N: Final[int] = 3
     batch: Final[int] = 20
     now = datetime.now()
-    num_iter = 100
+    num_iter = learning_cycles
     lr = 0.002
 
     # setting for log of PEPG
@@ -269,14 +276,14 @@ def main():
 
     # open the target image
     # todo:UI から読み込めるようにする
-    img_path: Path = Path("src/model/Attack_data/000_1_0003_1_j.png")
+    img_path: Path = Path(target_image_path)
     img: Image = Image.open(img_path)  # type: ignore
     img_tensor = custom_transform(img)
 
     # open the batterfly image
     # todo:UIから画像を読み込めるようにする
 
-    batterfly_img_path = Path("src/model/Attack_data/0010001.png")# パッチのパス
+    batterfly_img_path = Path(patch_image_path) #パッチのパス
     batterfly_img: Image = CutoutEdge(batterfly_img_path)
 
     # get ground truth label from the file name.
@@ -289,7 +296,7 @@ def main():
 
     # load the model
 
-    model = torch.load("src/model/trained_CNN.pth")
+    model = torch.load(target_model_path)
 
     criterion = torch.nn.CrossEntropyLoss()
 
@@ -310,6 +317,9 @@ def main():
     # PEPGアルゴリズムを用いたパッチ貼り付け位置の最適化
     with torch.no_grad():
         for iter in tqdm(range(num_iter)):
+            if stop is True:
+                stop = False
+                return highest_reward,best_patch_position
             rewards: Tensor = torch.tensor([])
             mu_grad: Tensor = torch.zeros(N)
             sigma_grad: Tensor = torch.zeros(N)
@@ -405,6 +415,9 @@ def main():
     return highest_reward,best_patch_position
 
 if __name__ == "__main__":
-    max_reward,best_position = main()
+    max_reward,best_position = main("src/model/trained_CNN.pth", \
+                                    "src/model/Attack_data/000_1_0003_1_j.png", \
+                                    "src/model/Attack_data/0010001.png", \
+                                    100)
     print(f"max_reward:{max_reward}")
     print(f"Best Patch Position: {best_position}")
