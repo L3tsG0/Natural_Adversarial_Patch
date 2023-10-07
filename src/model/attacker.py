@@ -15,6 +15,8 @@ from torch.utils.tensorboard.writer import SummaryWriter
 from datetime import datetime
 from typing import Final
 from src.model.evaluation import load_model
+from src.UI.interface import AEengine_interface
+import os
 
 def paste_with_alpha(background, overlay, position=(0, 0)):
     """
@@ -186,12 +188,24 @@ def calc_reward(
 
     return torch.stack(reward_)
 
-def dump_patched_image_and_predict_label(position: Tensor):
-    usecsv = True
+interface: AEengine_interface = None
+def set_interface(arg: AEengine_interface):
+    global interface
+    interface = arg
+
+usecsv = True
+csv_path = ""
+def set_usecsv(setting: bool, _csv_path: str):
+    global usecsv, csv_path
+    usecsv = setting
+    csv_path = _csv_path
+
+def dump_patched_image_and_predict_label(position: Tensor, target_model_path:str, target_image_path: str, patch_image_path: str,):
+    global usecsv
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # setting from the result of PEPG
-    position = torch.tensor([0.0000, 0.5173, 0.0000])
+    # position = torch.tensor([0.0000, 0.5173, 0.0000])
 
     PatchCenter: tuple[Tensor, Tensor] = (position[0], position[1])
     patch_angle_ratio: float = float(position[2])
@@ -199,16 +213,19 @@ def dump_patched_image_and_predict_label(position: Tensor):
 
 
     # load batterfly img
-    batterfly_img_path = Path("src/model/Attack_data/0010001.png")
+    #batterfly_img_path = Path("src/model/Attack_data/0010001.png")
+    batterfly_img_path = Path(patch_image_path)
     batterfly_img: Image.Image = CutoutEdge(batterfly_img_path)
 
     # loat target img fom tmp file
-    img_path: Path = Path("src/model/Attack_data/000_1_0003_1_j.png")
+    #img_path: Path = Path("src/model/Attack_data/000_1_0003_1_j.png")
+    img_path: Path = Path(target_image_path)
     img: Image.Image = Image.open(img_path)  # type: ignore
 
     # load the model
     model: torch.nn.Module = load_model(
-        Path("src/model/trained_CNN.pth"),
+        #Path("src/model/trained_CNN.pth"),
+        Path(target_model_path),
         device=device,
     )
 
@@ -227,7 +244,18 @@ def dump_patched_image_and_predict_label(position: Tensor):
         size_ratio=patch_size_ratio,
         angle_ratio=patch_angle_ratio,
     )
-    img_with_patch.save("test.png")
+
+    if not os.path.exists("export"):
+        os.mkdir("export")
+    i = 0
+    while True:
+        patch_filename = f"export/patched_image_{i}.png"
+        if os.path.exists(patch_filename):
+            i += 1
+        else:
+            break
+
+    img_with_patch.save(patch_filename)
 
     # predict the label
     img_tensor: Tensor = custom_transform(img_with_patch)
@@ -236,6 +264,9 @@ def dump_patched_image_and_predict_label(position: Tensor):
     predict_label:int = int(torch.argmax(output).item())
     print(f"predict:{predict_label}")
     print(f"Answer: {label.item()}")
+
+
+    return patch_filename, predict_label, label.item()
 
 stop = False
 def stop_cycles():
@@ -373,6 +404,14 @@ def main(target_model_path:str, target_image_path: str, patch_image_path: str, l
                 highest_reward = max_reward
                 best_patch_position = xy_combined[max_reward_index].tolist()
 
+                # 最大報酬が更新されたとき、最大報酬のパッチを出力し、UIに反映
+                patch_filename, predict_label, answer_label = dump_patched_image_and_predict_label(\
+                    torch.tensor(best_patch_position), \
+                    target_model_path, target_image_path, \
+                    patch_image_path)
+                if interface:
+                    interface.ui_end_1epoch(patch_filename, highest_reward)
+
             with open("PatchApply.txt", "a") as f:
                 f.write(f"max_reward:{max_reward}\n")
                 f.write(f"patch_positions:{xy_combined[max_reward_index]}\n")
@@ -411,13 +450,18 @@ def main(target_model_path:str, target_image_path: str, patch_image_path: str, l
             xy_sigma = xy_sigma.clip(0.5)
 
             writer.add_scalar("xy_mu", xy_mu[0], iter)
-            writer.add_scalar("xy_sigma", xy_sigma[0], iter)
+            writer.add_scalar("xy_sigma", xy_sigma[0], iter)      
+
+            # 学習の進捗をUIに反映
+            if interface:
+                interface.set_convergence((iter+1)/num_iter)
+
     return highest_reward,best_patch_position
 
 if __name__ == "__main__":
     max_reward,best_position = main("src/model/trained_CNN.pth", \
                                     "src/model/Attack_data/000_1_0003_1_j.png", \
                                     "src/model/Attack_data/0010001.png", \
-                                    100)
+                                    200)
     print(f"max_reward:{max_reward}")
     print(f"Best Patch Position: {best_position}")
