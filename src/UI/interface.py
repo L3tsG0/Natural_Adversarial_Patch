@@ -14,9 +14,10 @@ class AEengine_interface(metaclass=abc.ABCMeta):
     #def get_attack_success_rate(self) -> float:
     #    pass
 
-    def set_ui_func(self, end_1epoch, set_convergence):
+    def set_ui_func(self, end_1epoch, set_convergence, end_1optimize_iteration):
         self.ui_end_1epoch = end_1epoch
         self.set_convergence = set_convergence
+        self.ui_end_1optimize_iteration = end_1optimize_iteration
         
 
     @abc.abstractmethod
@@ -29,7 +30,7 @@ class AEengine_interface(metaclass=abc.ABCMeta):
 
     #学習開始の関数:攻撃対象のパスと学習回数を引数で渡す
     @abc.abstractmethod
-    def start_learning(self, Target_model_path: str, Target_image_path: str, patch_image_path: str, learning_cycles: int):
+    def start_learning(self, Target_model_path: str, Target_image_path: str, patch_image_path: str, learning_cycles: int, iteration_cycles: int, useGAN: bool):
         pass
 
     #学習停止の関数

@@ -17,6 +17,7 @@ from typing import Final
 from src.model.evaluation import load_model
 from src.UI.interface import AEengine_interface
 import os
+import random
 
 def paste_with_alpha(background, overlay, position=(0, 0)):
     """
@@ -260,7 +261,7 @@ def dump_patched_image_and_predict_label(position: Tensor, target_model_path:str
     # predict the label
     img_tensor: Tensor = custom_transform(img_with_patch)
     criterion = torch.nn.CrossEntropyLoss()
-    output: Tensor = model(img_tensor)
+    output: Tensor = model(img_tensor.to(device))
     predict_label:int = int(torch.argmax(output).item())
     print(f"predict:{predict_label}")
     print(f"Answer: {label.item()}")
@@ -276,7 +277,7 @@ def stop_cycles():
 
 
 def main(target_model_path:str, target_image_path: str, patch_image_path: str, learning_cycles: int):
-    global stop
+    global stop, interface
 
     # define the patch size
     patch_size_ratio = 0.2
@@ -313,7 +314,15 @@ def main(target_model_path:str, target_image_path: str, patch_image_path: str, l
 
     # open the batterfly image
     # todo:UIから画像を読み込めるようにする
-
+    
+    # batterfly_imgs = []
+    # if "@" in patch_image_path:
+    #     tmp = patch_image_path.split("@")
+        
+    #     for i in range(0, 64):
+    #         batterfly_imgs.append(CutoutEdge(Path(tmp[0] + str(i) + tmp[1])))
+    # else: 
+    #     batterfly_imgs.append(CutoutEdge(Path(tmp[0] + str(i) + tmp[1])))   
     batterfly_img_path = Path(patch_image_path) #パッチのパス
     batterfly_img: Image = CutoutEdge(batterfly_img_path)
 
@@ -373,7 +382,7 @@ def main(target_model_path:str, target_image_path: str, patch_image_path: str, l
             xy_combined = torch.cat((xy_positive, xy_negative))
 
             # calc reward
-
+            # batterfly_img = batterfly_imgs[random.randint(0, 63)]
             r_positive: Tensor = calc_reward(
                 img=img,
                 label_=label,
@@ -410,7 +419,7 @@ def main(target_model_path:str, target_image_path: str, patch_image_path: str, l
                     target_model_path, target_image_path, \
                     patch_image_path)
                 if interface:
-                    interface.ui_end_1epoch(patch_filename, highest_reward)
+                    interface.ui_end_1optimize_iteration(patch_filename, highest_reward, predict_label, answer_label)
 
             with open("PatchApply.txt", "a") as f:
                 f.write(f"max_reward:{max_reward}\n")
@@ -454,7 +463,7 @@ def main(target_model_path:str, target_image_path: str, patch_image_path: str, l
 
             # 学習の進捗をUIに反映
             if interface:
-                interface.set_convergence((iter+1)/num_iter)
+                interface.set_convergence("", (iter+1)/num_iter)
 
     return highest_reward,best_patch_position
 

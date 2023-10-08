@@ -106,8 +106,14 @@ def set_interface(_arg: AEengine_interface):
     global interface
     interface = _arg
 
+stop = False
+def stop_cycles():
+    global stop
+    stop = True
 
-def main(dataset_path: str):
+
+def main(dataset_path: str, learning_cycles: int):
+    global stop, interface
     # Set random seed for reproducibility
     manualSeed = 999
     # manualSeed = random.randint(1, 10000) # use if you want new results
@@ -133,7 +139,7 @@ def main(dataset_path: str):
     image_size: Final[int] = 64 # 画像サイズ
 
     # Number of training epochs
-    num_epochs: Final[int] = 1
+    num_epochs: Final[int] = learning_cycles
 
     # Learning rate for optimizers
     lr: Final[float] = 0.0001
@@ -143,6 +149,7 @@ def main(dataset_path: str):
 
     # Number of GPUs available. Use 0 for CPU mode.
     ngpu: int = torch.cuda.device_count()
+    print("ngpu: ", ngpu)
 
     # We can use an image folder dataset the way we have it setup.
     # Create the dataset
@@ -163,7 +170,8 @@ def main(dataset_path: str):
     )
 
     # Decide which device we want to run on
-    device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
+    device = torch.device("cuda" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
+    # device = torch.device("cuda")
 
     # Plot some training images
     real_batch = next(iter(dataloader))
@@ -238,6 +246,11 @@ def main(dataset_path: str):
     for epoch in range(num_epochs):
         # For each batch in the dataloader
         for i, data in enumerate(dataloader, 0):
+            if stop is True:
+                stop = False
+                return
+            
+            
             ############################
             # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
             ###########################
@@ -309,21 +322,23 @@ def main(dataset_path: str):
             G_losses.append(errG.item())
             D_losses.append(errD.item())
 
+            with torch.no_grad():
+                fake = netG(fixed_noise).detach().cpu()
+            grid = vutils.make_grid(fake, padding=2, normalize=True).permute(1, 2, 0)
+            #grid = torch.clamp(grid+0.5, 0, 1)
+            if not os.path.exists("export"):
+                os.mkdir("export")
+            if not os.path.exists("export/GAN_generated_images"):
+                os.mkdir("export/GAN_generated_images")
+            plt.imsave("export/GAN_generated_images/grid.png", grid.numpy())
+
             # Check how the generator is doing by saving G's output on fixed_noise
             if (iters % 500 == 0) or (
                 (epoch == num_epochs - 1) and (i == len(dataloader) - 1)
             ):
                 with torch.no_grad():
                     fake = netG(fixed_noise).detach().cpu()
-
-                if not os.path.exists("export"):
-                    os.mkdir("export")
-                if not os.path.exists("export/GAN_generated_images"):
-                    os.mkdir("export/GAN_generated_images")
-
-                grid = vutils.make_grid(fake, padding=2, normalize=True).permute(1, 2, 0)
-                #grid = torch.clamp(grid+0.5, 0, 1)
-                plt.imsave("export/GAN_generated_images/grid.png", grid.numpy())
+                
                 if epoch == num_epochs-1:
                     for idx, img in enumerate(fake):
                         filename = f"export/GAN_generated_images/image_{idx}.png"
@@ -334,6 +349,9 @@ def main(dataset_path: str):
                 img_list.append(grid)
 
             iters += 1
+        if interface:
+            interface.ui_end_1epoch("export/GAN_generated_images/grid.png")
+            interface.set_convergence(f"{epoch+1} / {num_epochs}", (epoch+1)/num_epochs)
 
 
     # show the learning result
@@ -388,4 +406,4 @@ def main(dataset_path: str):
     # plt.show()
 
 if __name__ == "__main__":
-    main("leedsbutterfly/dataset")
+    main("leedsbutterfly/dataset", 1)
