@@ -15,6 +15,9 @@ from torch.utils.tensorboard.writer import SummaryWriter
 from datetime import datetime
 from typing import Final
 from src.model.evaluation import load_model
+from src.UI.interface import AEengine_interface
+import os
+import random
 
 def paste_with_alpha(background, overlay, position=(0, 0)):
     """
@@ -186,12 +189,24 @@ def calc_reward(
 
     return torch.stack(reward_)
 
-def dump_patched_image_and_predict_label(position: Tensor):
-    usecsv = True
+interface: AEengine_interface = None
+def set_interface(arg: AEengine_interface):
+    global interface
+    interface = arg
+
+usecsv = True
+csv_path = ""
+def set_usecsv(setting: bool, _csv_path: str):
+    global usecsv, csv_path
+    usecsv = setting
+    csv_path = _csv_path
+
+def dump_patched_image_and_predict_label(position: Tensor, target_model_path:str, target_image_path: str, patch_image_path: str,):
+    global usecsv
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # setting from the result of PEPG
-    position = torch.tensor([0.0000, 0.5173, 0.0000])
+    # position = torch.tensor([0.0000, 0.5173, 0.0000])
 
     PatchCenter: tuple[Tensor, Tensor] = (position[0], position[1])
     patch_angle_ratio: float = float(position[2])
@@ -199,16 +214,19 @@ def dump_patched_image_and_predict_label(position: Tensor):
 
 
     # load batterfly img
-    batterfly_img_path = Path("src/model/Attack_data/0010001.png")
+    #batterfly_img_path = Path("src/model/Attack_data/0010001.png")
+    batterfly_img_path = Path(patch_image_path)
     batterfly_img: Image.Image = CutoutEdge(batterfly_img_path)
 
     # loat target img fom tmp file
-    img_path: Path = Path("src/model/Attack_data/000_1_0003_1_j.png")
+    #img_path: Path = Path("src/model/Attack_data/000_1_0003_1_j.png")
+    img_path: Path = Path(target_image_path)
     img: Image.Image = Image.open(img_path)  # type: ignore
 
     # load the model
     model: torch.nn.Module = load_model(
-        Path("src/model/trained_CNN.pth"),
+        #Path("src/model/trained_CNN.pth"),
+        Path(target_model_path),
         device=device,
     )
 
@@ -227,19 +245,40 @@ def dump_patched_image_and_predict_label(position: Tensor):
         size_ratio=patch_size_ratio,
         angle_ratio=patch_angle_ratio,
     )
-    img_with_patch.save("test.png")
+
+    if not os.path.exists("export"):
+        os.mkdir("export")
+    i = 0
+    while True:
+        patch_filename = f"export/patched_image_{i}.png"
+        if os.path.exists(patch_filename):
+            i += 1
+        else:
+            break
+
+    img_with_patch.save(patch_filename)
 
     # predict the label
     img_tensor: Tensor = custom_transform(img_with_patch)
     criterion = torch.nn.CrossEntropyLoss()
-    output: Tensor = model(img_tensor)
+    output: Tensor = model(img_tensor.to(device))
     predict_label:int = int(torch.argmax(output).item())
     print(f"predict:{predict_label}")
     print(f"Answer: {label.item()}")
 
 
+    return patch_filename, predict_label, label.item()
 
-def main():
+stop = False
+def stop_cycles():
+    global stop
+    stop = True
+
+
+
+def main(target_model_path:str, target_image_path: str, patch_image_path: str, learning_cycles: int):
+    global stop, interface
+
     # define the patch size
     patch_size_ratio = 0.2
 
@@ -247,7 +286,7 @@ def main():
     N: Final[int] = 3
     batch: Final[int] = 20
     now = datetime.now()
-    num_iter = 100
+    num_iter = learning_cycles
     lr = 0.002
 
     # setting for log of PEPG
@@ -269,14 +308,22 @@ def main():
 
     # open the target image
     # todo:UI から読み込めるようにする
-    img_path: Path = Path("src/model/Attack_data/000_1_0003_1_j.png")
+    img_path: Path = Path(target_image_path)
     img: Image = Image.open(img_path)  # type: ignore
     img_tensor = custom_transform(img)
 
     # open the batterfly image
     # todo:UIから画像を読み込めるようにする
-
-    batterfly_img_path = Path("src/model/Attack_data/0010001.png")# パッチのパス
+    
+    # batterfly_imgs = []
+    # if "@" in patch_image_path:
+    #     tmp = patch_image_path.split("@")
+        
+    #     for i in range(0, 64):
+    #         batterfly_imgs.append(CutoutEdge(Path(tmp[0] + str(i) + tmp[1])))
+    # else: 
+    #     batterfly_imgs.append(CutoutEdge(Path(tmp[0] + str(i) + tmp[1])))   
+    batterfly_img_path = Path(patch_image_path) #パッチのパス
     batterfly_img: Image = CutoutEdge(batterfly_img_path)
 
     # get ground truth label from the file name.
@@ -289,7 +336,7 @@ def main():
 
     # load the model
 
-    model = torch.load("src/model/trained_CNN.pth")
+    model = torch.load(target_model_path)
 
     criterion = torch.nn.CrossEntropyLoss()
 
@@ -310,6 +357,9 @@ def main():
     # PEPGアルゴリズムを用いたパッチ貼り付け位置の最適化
     with torch.no_grad():
         for iter in tqdm(range(num_iter)):
+            if stop is True:
+                stop = False
+                return highest_reward,best_patch_position
             rewards: Tensor = torch.tensor([])
             mu_grad: Tensor = torch.zeros(N)
             sigma_grad: Tensor = torch.zeros(N)
@@ -332,7 +382,7 @@ def main():
             xy_combined = torch.cat((xy_positive, xy_negative))
 
             # calc reward
-
+            # batterfly_img = batterfly_imgs[random.randint(0, 63)]
             r_positive: Tensor = calc_reward(
                 img=img,
                 label_=label,
@@ -362,6 +412,14 @@ def main():
             if highest_reward < max_reward:
                 highest_reward = max_reward
                 best_patch_position = xy_combined[max_reward_index].tolist()
+
+                # 最大報酬が更新されたとき、最大報酬のパッチを出力し、UIに反映
+                patch_filename, predict_label, answer_label = dump_patched_image_and_predict_label(\
+                    torch.tensor(best_patch_position), \
+                    target_model_path, target_image_path, \
+                    patch_image_path)
+                if interface:
+                    interface.ui_end_1optimize_iteration(patch_filename, highest_reward, predict_label, answer_label)
 
             with open("PatchApply.txt", "a") as f:
                 f.write(f"max_reward:{max_reward}\n")
@@ -401,10 +459,18 @@ def main():
             xy_sigma = xy_sigma.clip(0.5)
 
             writer.add_scalar("xy_mu", xy_mu[0], iter)
-            writer.add_scalar("xy_sigma", xy_sigma[0], iter)
+            writer.add_scalar("xy_sigma", xy_sigma[0], iter)      
+
+            # 学習の進捗をUIに反映
+            if interface:
+                interface.set_convergence("", (iter+1)/num_iter)
+
     return highest_reward,best_patch_position
 
 if __name__ == "__main__":
-    max_reward,best_position = main()
+    max_reward,best_position = main("src/model/trained_CNN.pth", \
+                                    "src/model/Attack_data/000_1_0003_1_j.png", \
+                                    "src/model/Attack_data/0010001.png", \
+                                    200)
     print(f"max_reward:{max_reward}")
     print(f"Best Patch Position: {best_position}")

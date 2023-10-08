@@ -2,7 +2,7 @@ import abc
 
 class AEengine_interface(metaclass=abc.ABCMeta):
     def __init__(self) -> None:
-        self.ui_end_1epoch = None
+        pass
 
     #現時点での学習収束率を返す関数。どう取得できるかがよくわからないのでとりあえずfloatで定義
     #@abc.abstractmethod
@@ -14,8 +14,11 @@ class AEengine_interface(metaclass=abc.ABCMeta):
     #def get_attack_success_rate(self) -> float:
     #    pass
 
-    def set_end_1epoch(self, ui_end_1epoch):
-        self.ui_end_1epoch = ui_end_1epoch
+    def set_ui_func(self, end_1epoch, set_convergence, end_1optimize_iteration):
+        self.ui_end_1epoch = end_1epoch
+        self.set_convergence = set_convergence
+        self.ui_end_1optimize_iteration = end_1optimize_iteration
+        
 
     @abc.abstractmethod
     def export_AEPatch(self, filename: str):
@@ -27,18 +30,24 @@ class AEengine_interface(metaclass=abc.ABCMeta):
 
     #学習開始の関数:攻撃対象のパスと学習回数を引数で渡す
     @abc.abstractmethod
-    def start_learning(self, Target_of_attack_path: str, learning_cycles: int):
+    def start_learning(self, Target_model_path: str, Target_image_path: str, patch_image_path: str, learning_cycles: int, iteration_cycles: int, useGAN: bool):
         pass
 
     #学習停止の関数
     @abc.abstractmethod
     def stop_learning(self):
         pass
-        
+
+    #ラベルの設定
+    @abc.abstractmethod
+    def set_label(self, setting: bool, csv_path: str):
+        pass
+
+
     # 生成されたパッチの画像ファイルをAEエンジンから呼び出すことで、UIのプレビューに反映される
     # 同時に攻撃成功率、学習収束率も反映するため、引数で渡す
-    def end_1epoch(self, patch_filename: str, attack_success_rate: float, convergence: float):
-        self.ui_end_1epoch(patch_filename, attack_success_rate, convergence)
+    #def ui_end_1epoch(self, patch_filename: str, attack_success_rate: float):
+    #    self.ui_end_1epoch(patch_filename, attack_success_rate)
 
     
 
