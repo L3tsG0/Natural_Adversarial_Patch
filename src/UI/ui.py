@@ -205,13 +205,13 @@ class UI:
         self.patch_canvas.place(x=WIDTH-self.canvas_width-50, y=HEIGHT/5)
 
         # Exportボタン
-        button1=tk.Button(self.root,text="Export Patch",width=WIDTH//40,height=HEIGHT//500)
-        button1.place(x=WIDTH/20,y=HEIGHT-(HEIGHT/12))
-        button1["command"] = self.__export_patch
+        # button1=tk.Button(self.root,text="Export Patch",width=WIDTH//40,height=HEIGHT//500)
+        # button1.place(x=WIDTH/20,y=HEIGHT-(HEIGHT/12))
+        # button1["command"] = self.__export_patch
 
-        button2=tk.Button(self.root,text="Export AE Model",width=WIDTH//40,height=HEIGHT//500)
-        button2.place(x=WIDTH-(WIDTH/3),y=HEIGHT-(HEIGHT/12))
-        button2["command"] = self.__export_model
+        # button2=tk.Button(self.root,text="Export AE Model",width=WIDTH//40,height=HEIGHT//500)
+        # button2.place(x=WIDTH-(WIDTH/3),y=HEIGHT-(HEIGHT/12))
+        # button2["command"] = self.__export_model
         #button2.pack()
 
         
