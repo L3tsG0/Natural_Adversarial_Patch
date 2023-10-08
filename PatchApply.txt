@@ -6770,3 +6770,74 @@ max_reward:22.642358779907227
 patch_positions:tensor([0.0000, 1.0000, 0.7164])
 max_reward:22.642358779907227
 patch_positions:tensor([0.0000, 1.0000, 0.7164])
+PatchSize:0.2
+xy_mu_init:tensor([0.1091, 0.2937, 0.1598])
+xy_sigma_init:tensor([2., 2., 2.])
+lr:0.002
+num_iter:100
+batch:20
+PatchNum:1.5
+max_reward:17.48968505859375
+patch_positions:tensor([1., 0., 0.])
+max_reward:17.48968505859375
+patch_positions:tensor([1., 0., 0.])
+max_reward:18.455585479736328
+patch_positions:tensor([0.4670, 1.0000, 1.0000])
+max_reward:18.455585479736328
+patch_positions:tensor([0.4670, 1.0000, 1.0000])
+max_reward:20.01774024963379
+patch_positions:tensor([0., 0., 0.])
+max_reward:20.01774024963379
+patch_positions:tensor([0., 0., 0.])
+max_reward:19.54474639892578
+patch_positions:tensor([0., 0., 0.])
+max_reward:19.54474639892578
+patch_positions:tensor([0., 0., 0.])
+max_reward:17.76404571533203
+patch_positions:tensor([0.0000, 1.0000, 0.2740])
+max_reward:17.76404571533203
+patch_positions:tensor([0.0000, 1.0000, 0.2740])
+max_reward:19.351444244384766
+patch_positions:tensor([0.0000, 1.0000, 0.9896])
+max_reward:19.351444244384766
+patch_positions:tensor([0.0000, 1.0000, 0.9896])
+max_reward:18.79188346862793
+patch_positions:tensor([1.0000, 0.0000, 0.8149])
+max_reward:18.79188346862793
+patch_positions:tensor([1.0000, 0.0000, 0.8149])
+max_reward:23.07564353942871
+patch_positions:tensor([0.0000, 1.0000, 0.9494])
+max_reward:23.07564353942871
+patch_positions:tensor([0.0000, 1.0000, 0.9494])
+max_reward:18.38813018798828
+patch_positions:tensor([0.5835, 1.0000, 0.6955])
+max_reward:18.38813018798828
+patch_positions:tensor([0.5835, 1.0000, 0.6955])
+max_reward:20.92289161682129
+patch_positions:tensor([1., 1., 1.])
+max_reward:20.92289161682129
+patch_positions:tensor([1., 1., 1.])
+max_reward:17.6906681060791
+patch_positions:tensor([0.0000, 0.3689, 0.0000])
+max_reward:17.6906681060791
+patch_positions:tensor([0.0000, 0.3689, 0.0000])
+max_reward:23.374710083007812
+patch_positions:tensor([0.0000, 0.0000, 0.3513])
+max_reward:23.374710083007812
+patch_positions:tensor([0.0000, 0.0000, 0.3513])
+max_reward:19.145727157592773
+patch_positions:tensor([0.0000, 0.7399, 0.2796])
+max_reward:19.145727157592773
+patch_positions:tensor([0.0000, 0.7399, 0.2796])
+max_reward:22.423686981201172
+patch_positions:tensor([0.1135, 0.9281, 1.0000])
+max_reward:22.423686981201172
+patch_positions:tensor([0.1135, 0.9281, 1.0000])
+max_reward:20.922672271728516
+patch_positions:tensor([1., 0., 1.])
+max_reward:20.922672271728516
+patch_positions:tensor([1., 0., 1.])
+max_reward:17.311763763427734
+patch_positions:tensor([0.1908, 0.7592, 0.0000])
+max_reward:17.311763763427734
+patch_positions:tensor([0.1908, 0.7592, 0.0000])
